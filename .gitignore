@@ -1,0 +1,7 @@
+
+# all project notes and docs are untracked by design
+docs/
+
+.DS_Store
+
+.zig-cache/
