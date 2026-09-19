@@ -1,0 +1,7 @@
+.{
+    .name = .comptime_casanova,
+    .version = "0.1.0",
+    .fingerprint = 0x45540b0f4cd68b98,
+    .minimum_zig_version = "0.16.0",
+    .paths = .{""},
+}

@@ -1,0 +1,15 @@
+# all project notes and docs are untracked by design
+docs/
+
+# macOS
+.DS_Store
+
+# Zig
+.zig-cache/
+zig-out/
+
+# Editor and tooling
+.ruby-lsp/
+.vscode/
+.idea/
+*.swp
