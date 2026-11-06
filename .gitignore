@@ -1,5 +1,6 @@
-# all project notes and docs are untracked by design
-docs/
+# project notes are untracked by design, except the committed reference pages
+docs/*
+!docs/reference/
 
 # macOS
 .DS_Store

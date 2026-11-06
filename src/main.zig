@@ -8,6 +8,12 @@ const tacky = @import("tacky.zig");
 const codegen = @import("codegen.zig");
 const emit = @import("emit.zig");
 
+// `zig build test` starts from this file; naming each stage pulls in its tests.
+test {
+    _ = lexer;
+    _ = parser;
+}
+
 // How far to run the pipeline. The book's test harness passes the flags that
 // stop it early; `.link` (no flag) runs all the way to an executable.
 const Stage = enum { lex, parse, validate, tacky, codegen, assembly, link };
@@ -33,7 +39,11 @@ fn preprocess(io: Io, input: []const u8, i_path: []const u8) !void {
 }
 
 fn assembleLink(io: Io, asm_path: []const u8, exe_path: []const u8) !void {
-    try run(io, &.{ "cc", asm_path, "-o", exe_path });
+    // The host is Apple Silicon; -arch x86_64 assembles and links for the
+    // x86-64 target (decision 0001), and Rosetta 2 runs the result.
+    var child = try std.process.spawn(io, .{ .argv = &.{ "cc", "-arch", "x86_64", asm_path, "-o", exe_path } });
+    const term = try child.wait(io);
+    if (term != .exited or term.exited != 0) return error.AssembleLinkFailed;
 }
 
 fn readFile(io: Io, a: std.mem.Allocator, path: []const u8) ![]u8 {
@@ -92,6 +102,8 @@ pub fn main(init: std.process.Init) !void {
     const opts = try parseArgs(a, try init.minimal.args.toSlice(a));
     try preprocess(io, opts.input, opts.i_path);
     const text = try readFile(io, a, opts.i_path);
+    // The source is in memory now; the harness expects no intermediate files.
+    try Io.Dir.cwd().deleteFile(io, opts.i_path);
 
     const tokens = try lexer.tokenize(a, text);
     if (opts.stage == .lex) return;
@@ -106,4 +118,7 @@ pub fn main(init: std.process.Init) !void {
     try emit.toFile(a, asm_prog, opts.asm_path);
     if (opts.stage == .assembly) return;
     try assembleLink(io, opts.asm_path, opts.exe_path);
+    // -S keeps the .s (it is the output); a full compile leaves only the
+    // executable. A failed link returns above and keeps the .s for debugging.
+    try Io.Dir.cwd().deleteFile(io, opts.asm_path);
 }

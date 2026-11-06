@@ -77,3 +77,35 @@ pub fn tokenize(a: std.mem.Allocator, src: []const u8) ![]Token {
     }
     return out.items;
 }
+
+test "tokenizes the minimal program" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const tokens = try tokenize(arena.allocator(), "int main(void){return 2;}");
+
+    const expected = [_]Token{
+        .kw_int,  .{ .identifier = "main" }, .l_paren,           .kw_void,   .r_paren,
+        .l_brace, .kw_return,                .{ .constant = 2 }, .semicolon, .r_brace,
+    };
+    try std.testing.expectEqual(expected.len, tokens.len);
+    for (expected, tokens) |want, got| {
+        try std.testing.expectEqual(std.meta.activeTag(want), std.meta.activeTag(got));
+        switch (want) {
+            .identifier => |name| try std.testing.expectEqualStrings(name, got.identifier),
+            .constant => |n| try std.testing.expectEqual(n, got.constant),
+            else => {},
+        }
+    }
+}
+
+test "rejects a constant glued to an identifier" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    try std.testing.expectError(error.BadNumber, tokenize(arena.allocator(), "return 123abc;"));
+}
+
+test "rejects a byte with no token" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    try std.testing.expectError(error.UnexpectedChar, tokenize(arena.allocator(), "int @"));
+}
